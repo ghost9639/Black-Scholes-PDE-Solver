@@ -9,44 +9,53 @@ from scipy.stats import norm
 import time
 from matplotlib import pyplot as plt
 
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
 
+
+# @njit
 def input_data (r, sigma, T, K, M, N, xmin, xmax):
     """Input validation function, returns false when input fails."""
 
     _fail = False               # fail condition allows for check and inverted result can be passed out
 
-    if not (isinstance (r, (int, float)) and not isinstance (r, bool)) or r <= 0:
-        print("The interest rate must be a positive real number,")
+
+    if not (isinstance(r, (int, float)) and not isinstance(r, bool)) or r <= 0:
+        print("The interest rate must be a positive real number.")
         _fail = True
 
-    if not (isinstance (sigma, (int, float)) and not isinstance (r, bool)) or r < 0:
-        print("The volatilityinterest rate must be a non-negative real number,")
+    if not (isinstance(sigma, (int, float)) and not isinstance(sigma, bool)) or sigma <= 0:
+        print("Volatility must be a positive real number.")
         _fail = True
 
-    if not (isinstance (T, (int, float)) and not isinstance (T, bool)) or T <= 0:
-        print("The maturity date must be a positive real number,")
+    if not (isinstance(T, (int, float)) and not isinstance(T, bool)) or T <= 0:
+        print("Time to maturity must be a positive real number.")
         _fail = True
 
-    if not (isinstance (K, (int, float)) and not isinstance (K, bool)) or K <= 0:
-        print("The strike price must be a positive real number,")
+    if not (isinstance(K, (int, float)) and not isinstance(K, bool)) or K <= 0:
+        print("Strike price must be a positive real number.")
         _fail = True
 
-    if not (isinstance (M, (int, float)) and not isinstance (M, bool)) or M < 0:
-        print("The chains must be a non-negative real number,")
+    if not (isinstance(M, int) or isinstance(M, np.integer)) or isinstance(M, bool) or M <= 0:
+        print("M must be a positive integer.")
         _fail = True
 
-    if not (isinstance (N, (int, float)) and not isinstance (N, bool)) or N < 0:
-        print("The sample sizes must be a non-negative real number,")
+    if not (isinstance(N, int) or isinstance(N, np.integer)) or isinstance(N, bool) or N <= 0:
+        print("N must be a positive integer.")
         _fail = True
 
-    if not (isinstance (xmin, (int, float, np.float64)) and not isinstance (xmin, bool)):
-        print("The interest rate must be a number,")
+    if not (isinstance(xmin, (int, float)) and not isinstance(xmin, bool)):
+        print("xmin must be a real number.")
         _fail = True
 
-    if not (isinstance (xmax, (int, float, np.float64)) and not isinstance (xmax, bool)):
-        print("The interest rate must be a positive real number,")
+    if not (isinstance(xmax, (int, float)) and not isinstance(xmax, bool)):
+        print("xmax must be a real number.")
         _fail = True
-        
+
+    if isinstance(xmin, (int, float)) and isinstance(xmax, (int, float)) and xmin >= xmax:
+        print("xmin must be strictly less than xmax.")
+        _fail = True
+    
     return not _fail
 
 
@@ -219,7 +228,9 @@ def timing_thomas_solvers ():
         thomas_trial_times = []
         scipy_trial_times = []
 
-        for _ in range (n_trials):
+        for i in range (n_trials):
+
+            print(f"Currently testing matrices of size {size}: Trial {i}...")
 
             test_b = np.random.uniform(0.0, 10.0, size)    # RHS matrix
 
@@ -242,54 +253,88 @@ def timing_thomas_solvers ():
 
     return thomas_times, scipy_times, N
 
-
+# Question 3 =============================================
+################ The Actual Function #####################
 @njit(fastmath=True)
-def black_scholes_implicit (r, sigma, T, K, M, N, xmin, xmax):   
+def black_scholes_implicit_engine (r, sigma, T, K, M, N, xmin, xmax):
     """Implicit calculation for European Call option
 
-    h(S_T) = (S_T-K)^+"""
+    h(S_T) = (S_T-K)^+
+    Uses the Implicit method and returns a vector of the stock evolution.
+    @param r the interest rate (as a decimal)
+    @param sigma the volatility of the stock
+    @param T the time till maturity (in years)
+    @param K the strike price
+    @param M the number of splits in the stock
+    @param N the number of splits in time
+    @param xmin the lower domain of the stock
+    @param xmax the upper domain of the stock
+    @output w the approximations of the stock price
+    """
 
-    # Approximation constants
-    delta_tau = ((sigma ** 2) * T) / (2 * N)
-    delta_x = (xmax - xmin) / M
+    # domains
+    domain_x = np.linspace(xmin, xmax, M+1) # x is the value of the stock
+    time = np.linspace(0, T, N+1)           # time is the "location" of the split (between 0 and T)
     
-    llambda = delta_tau / (delta_x ** 2)
+    # Discretisation constants
+    dt = T / N
     
-    # Approximation evolution
+    # Call price evolution (effectively range)
     w = np.zeros((M+1,N+1), dtype = np.float64)
-    
-    # initial period value
-    for i in range (M+1):
-        x = xmin + i * delta_x
-        w[i][0] = max(0., np.exp(x) - K) * np.exp(-r*T)
-    
-    # central differenced matrix A
-    alpha = (1 + 2 * llambda) * np.ones(M-1)
-    beta = (-llambda) * np.ones(M-2)
-    gamma = (-llambda) * np.ones(M-2)
-    
-    for v in range (N):
 
-        tau = (v+1) * delta_tau # current time step for discounting
+    # Call boundary conditions
+    w[:,0] = np.maximum (domain_x - K, 0) # value of x
+    w[0,:] = 0                  # when x -> 0
+    w[-1,:] = xmax - (K * np.exp(-r * time)) # when x -> \infty
+    
+    # A_implicit matrix definition ========
+
+    # this is the discretised space for defining row column vectors across stock value
+    space = np.arange(0, M+1, dtype = np.float64)
+
+    # instead of storing whole matrix define diagonal vectors
+    alpha = 0.5 * dt * ((sigma**2) * (space**2) - r * space) # upper diag
+    beta = dt * ((sigma**2) * (space**2) + r)       # middle diag
+    gamma = 0.5 * dt * ((sigma**2) * (space**2) + r * space) # lower diag
+
+    # impliciT method A Matrix
+    T_lower = -gamma[1:-2]
+    T_main = 1 + beta[1:-1]
+    T_upper = -alpha[2:-1]
+
+
+    for v in range (1, N+1):         # across timesteps
         
         # boundary conditions
-        w[0, v+1] = 0.
-        w[M, v+1] = np.exp(xmax) - (K * np.exp((-2 * r * tau) / (sigma ** 2)))
+        RHS = w[1:M,v-1].copy() # need a deep copy of last step
 
-        # w_v vector (copy of last chain)
-        RHS = w[1:M,v].copy()
-
-        # addition of boundary conditions (RHS is now w_v + d_v)
-        RHS[0] += llambda * w[0, v+1]  # left
-        RHS[-1] += llambda * w[M, v+1] # right
+        # addition of boundary conditions (RHS is now w_{v-1} + d_v)
+        RHS[0] += -alpha[1] * (w[0, v])
+        RHS[-1] += gamma[M - 1] * (w[M,v])
         
         # Solve for current period step (since Aw_{v+1} = (w_v + d_v))
-        w[1:M, v+1] = tridiagonal_solve_thomas(alpha, beta, gamma, RHS)
+        w[1:M, v] = tridiagonal_solve_thomas(T_main, T_lower, T_upper, RHS)
 
     return w
 
+def black_scholes_implicit (r, sigma, T, K, M, N, xmin, xmax):
+
+    try:
+        assert input_data (r, sigma, T, K, M, N, xmin, xmax)
+    except AssertionError:
+        print("Please adjust listed inputs.")
+        return None
+
+    return black_scholes_implicit_engine (r, sigma, T, K, M, N, xmin, xmax)
 
 def black_scholes_exact (S_0, r, sigma, T, K):
+    """A helper utility that explicitly calculates the Black-Scholes price for a European call
+
+    @param S_0 the initial stock price
+    @param r the interest rate (as a decimal)
+    @param sigma the volatility
+    @param T the time till maturity (in years)
+    @parma K the strike price (same units as stock price)"""
 
     d_1 = (np.log(S_0 / K) + (r + (sigma ** 2) / 2) * T) / (sigma * np.sqrt(T))
     d_2 = d_1 - sigma * np.sqrt(T)
@@ -297,10 +342,29 @@ def black_scholes_exact (S_0, r, sigma, T, K):
     return S_0 * norm.cdf(d_1) - np.exp(-r * T) * K * norm.cdf(d_2)
 
 def testing_implicit_accuracy (r, sigma, T, K, M, N, xmin, xmax):
-    """Implicit calculation for European Call option
+    """Generates the price evolution from the explicit Black-Scholes and the implicit method
+    across the same stock and price domains and ranges holomorphically
 
-    h(S_T) = (S_T-K)^+"""
+    @param r the interest rate (as a decimal)
+    @param sigma the volatility of the stock
+    @param T the time till maturity (in years)
+    @param K the strike price
+    @param M the number of splits in the stock
+    @param N the number of splits in time
+    @param xmin the lower domain of the stock
+    @param xmax the upper domain of the stock
+    @output exact_solution the exact price as calculated by the Black-Scholes equation
+    @output w the implicit approximations of the stock price
+    @output S_domain the stock price domain
+    """
 
+    try:
+        assert input_data (r, sigma, T, K, M, N, xmin, xmax)
+    except AssertionError:
+        print("Please adjust listed inputs.")
+        return None
+    # The implicit function run in full (to preserve the stock price split) ========
+    
     # Approximation constants
     delta_tau = ((sigma ** 2) * T) / (2 * N)
     delta_x = (xmax - xmin) / M
@@ -352,97 +416,160 @@ def testing_implicit_accuracy (r, sigma, T, K, M, N, xmin, xmax):
     # We can now return the exact solution and the central differenced approximation
     return exact_solution, w, S_domain
 
+# Question 4 =============================================
+################ The Actual Function #####################
+
 @njit(fastmath=True)
+def _stancil_algorithm (lower, central, upper, w):
+    """helper function that implements the Stancil tridiagonal vector multiplication algorithm"""
+
+    n = w.shape[0]
+    y = np.empty(n, dtype=np.float64)
+
+    for i in range (n):
+        val = central[i] * w[i]
+        if i > 0:
+            val += lower[i-1] * w[i-1]
+        if i < n-1:
+            val += upper[i] * w[i+1]
+        y[i] = val
+    return y
+
+
+@njit(fastmath=True)
+def black_scholes_crank_nicolson_engine (r, sigma, T, K, M, N, xmin, xmax):
+    """Calculates and returns the price of a vanilla European Call option using the Crank Nicolson
+    approximation
+
+    @param r the interest rate (as a decimal)
+    @param sigma the volatility of the stock
+    @param T the time till maturity (in years)
+    @param K the strike price
+    @param M the number of splits in the stock
+    @param N the number of splits in time
+    @param xmin the lower domain of the stock
+    @param xmax the upper domain of the stock
+    @output w the approximations of the stock price"""
+
+    # domains
+    domain_x = np.linspace(xmin, xmax, M+1) # x is the value of the stock
+    time = np.linspace(0, T, N+1)           # time is the "location" of the split (between 0 and T)
+
+    # Discretisation constants
+    dt = T / N
+
+    # Call price evolution (effectively range)
+    w = np.zeros((M+1,N+1)) # w holds the call price for (stock value, time split)
+
+    # Call boundary conditions
+    w[:,0] = np.maximum (domain_x - K, 0) # value of x
+    
+    w[0,:] = 0                  # when x -> 0
+    w[-1,:] = xmax - (K * np.exp(-r * time)) # when x -> \infty
+    
+    # Crank Nicolson Scheme ==============
+    
+    space = np.arange(0, M+1)   # this is the discretised space for defining row column vectors across stock value
+    
+    alpha = 0.25 * dt * ((sigma**2) * (space**2) - r * space) # upper diag
+    beta = -0.5 * dt * ((sigma**2) * (space**2) + r)       # middle diag
+    gamma = 0.25 * dt * ((sigma**2) * (space**2) + r * space) # lower diag
+    
+    # explicit method A matrix
+    # A_exp = sparse.diags([alpha[2:], 1+beta[1:], gamma[1:]], [-1,0,1], shape=(M-1, M-1))
+
+    A_lower = alpha[2:]
+    A_central = beta[1:] + 1
+    A_upper = gamma[1:-1]
+
+    # implicit method A Matrix
+    T_lower = -gamma[1:-1]
+    T_central = 1 - beta[1:]
+    T_upper = -alpha[2:]
+
+    # iterations
+    for v in range (1, N+1):
+        
+        # calculate Bn * w_v
+        b = _stancil_algorithm(A_lower, A_central, A_upper, w[1:-1, v-1])
+        
+        # add boundary conditions
+        b[0] += alpha[1] * (w[0, v-1] + w[0, v]) 
+        b[-1] += gamma[M - 1] * (w[M, v] + w[M, v-1])
+
+        # solve for next price step
+        w[1:M, v] = tridiagonal_solve_thomas(T_central, T_lower, T_upper, b)
+        
+    return w
+
 def black_scholes_crank_nicolson (r, sigma, T, K, M, N, xmin, xmax):
 
-    # Approximation constants
-    delta_tau = ((sigma ** 2) * T) / (2 * N)
-    delta_x = (xmax - xmin) / M
-    llambda = delta_tau / (delta_x ** 2)
+    try:
+        assert input_data (r, sigma, T, K, M, N, xmin, xmax)
+    except AssertionError:
+        print("Please adjust listed inputs.")
+        return -1
 
-    # Approximation evolution
-    w = np.zeros((M+1,N+1), dtype = np.float64)
-
-    # initial period value
-    for i in range (M+1):
-        x = xmin + i * delta_x
-        w[i][0] = max(0., np.exp(x) - K)
-
-    # central differenced matrix
-    A_alpha = (2 + 2 * llambda) * np.ones(M-1)
-    A_beta = (-llambda) * np.ones(M-2)
-    A_gamma = (-llambda) * np.ones(M-2)
-        
-    for v in range (N):
-        
-        tau = (v+1) * delta_tau # current time step for discounting
-        
-        # boundary conditions
-        w[0, v+1] = 0.
-        w[M, v+1] = np.exp(xmax) - (K * np.exp((-2 * r * tau) / (sigma ** 2)))
-
-        # Crank Nicolson RHS matrix
-        RHS = np.zeros(M-1)
-        
-        for i in range (1,M):
-        
-            RHS[i-1] = (
-                llambda * w[i+1, v] +
-                (2 - 2* llambda) * w[i,v] +
-                llambda * w[i-1, v]
-            )
-        
-        # addition of boundary conditions (RHS is now w_v + d_v)
-        RHS[0] += llambda * (w[0, v+1])  # left
-        RHS[-1] += llambda * (w[M, v+1]) # right
-        
-        # Solve for current period step (since Aw_{v+1} = (w_v + d_v))
-        w[1:M, v+1] = tridiagonal_solve_thomas(A_alpha, A_beta, A_gamma, RHS)
-
-    return w 
-
-
-
-def testing_rmse (r = 0.05, sigma = 0.1, T = 1.8, K = 673): 
-
-    M_test_cases = [10, 30, 50, 100, 250]
-    N_test_cases = [10, 30, 50, 100, 250]
-    implicit_rmse = np.zeros ((len(M_test_cases), len(N_test_cases)), dtype = np.float64)
-    crank_nicolson_rmse = np.zeros ((len(M_test_cases), len(N_test_cases)), dtype = np.float64)
-
-    n_std = 5
-    x_mid = np.log(K) + (r - 0.5 * sigma ** 2)*T
-    x_width = n_std * sigma * np.sqrt(T)
-    xmin = x_mid - x_width
-    xmax = x_mid + x_width
+    return black_scholes_crank_nicolson_engine (r, sigma, T, K, M, N, xmin, xmax)
 
     
-    for i, M in enumerate(M_test_cases):      # M discretises X
-        for j, N in enumerate(N_test_cases):  # N discretises t
+
+
+def _rmse(approx, exact):
+    return np.sqrt(np.mean((approx - exact) ** 2))
+
+
+def testing_rmse (r = 0.05, sigma = 0.1, T = 1.8, K = 673, xmin = 168.25, xmax = 2692):
+    """Utility for calculating the root mean squared error for the implicit and Crank_Nicolson schemes
+
+    @param r the interest rate as a decimal
+    @param sigma the volatility
+    @param T the maturity (in years)
+    @param K the strike price
+    @output
+    """
+
+    try:
+        assert input_data (r, sigma, T, K, 10, 10, -5, 5)
+    except AssertionError:
+        print("Please adjust listed inputs.")
+        return None
+
+    M_cases = [10, 30, 50, 100, 250, 1000]
+    N_cases = [10, 30, 50, 100, 250, 1000]
+    
+    implicit_rmse       = np.zeros((len(M_cases), len(N_cases)), dtype=np.float64)
+    crank_nicolson_rmse = np.zeros((len(M_cases), len(N_cases)), dtype=np.float64)
+
+    for i, M in enumerate(M_cases):
+        for j, N in enumerate(N_cases):
+
+                num = black_scholes_implicit (r, sigma, T, K,
+                                                   M, N, xmin, xmax)
+                nic_num = black_scholes_crank_nicolson (r, sigma, T, K, M, N, xmin, xmax)
+                mesh = np.linspace(xmin, xmax, M+1)
+                exact = black_scholes_exact(mesh, r, sigma, T, K)
+
             
-            delta_x = (xmax - xmin) / M            
-            x_domain = xmin + np.arange(M+1) * delta_x
-            S_domain = np.exp(x_domain)
-            
-            exact = black_scholes_exact(S_domain, r, sigma, T, K)
-            implicit = black_scholes_implicit(r, sigma, T, K, M, N, xmin, xmax)
-            crank_nicolson = black_scholes_crank_nicolson(r, sigma, T, K, M, N, xmin, xmax)
+                abs_error = np.abs(num[:,-1] - exact)
+                rmse = np.sqrt(np.mean(abs_error**2))
 
-            if M == 100 and N == 10:
-                print(implicit[:,-1])
-                print(exact)
-            # errors
-            implicit_rmse[i,j] = np.sqrt(np.mean((implicit[:,-1] -exact)**2))
-            crank_nicolson_rmse[i,j] = np.sqrt(np.mean((crank_nicolson[:,-1] -exact)**2))
+    
+                abs_error_nic = np.abs(nic_num[:,-1] - exact)
+                rmse_nic = np.sqrt(np.mean(abs_error_nic**2))
 
-    return M_test_cases, N_test_cases, implicit_rmse, crank_nicolson_rmse
+                implicit_rmse[i,j] = rmse
+                crank_nicolson_rmse[i,j] = rmse_nic
 
+    return M_cases, N_cases, implicit_rmse, crank_nicolson_rmse
+    
 
             
 if __name__ == "__main__":
 
+    # Question 2 tridiagonal_solve_thomas function ================================
     
-    # This will serve as a simple example case
+    # This will serve as a simple example case for the Thomas solver
     example_mat = np.array([
         [3, 6, 0, 0],
         [9, 4, 2, 0],
@@ -452,19 +579,23 @@ if __name__ == "__main__":
 
     example_sol = np.array([10, 6, 2, 4])
 
+    print(thomas_columns(example_mat)[1])
 
-    tridiagonal_solve_thomas(np.array([3,4,10,4]), np.array([6,2,8]), np.array([9,7,12]), example_sol)
+    print(tridiagonal_solve_thomas(np.array(thomas_columns(example_mat)[0]), np.array(thomas_columns(example_mat)[1]),
+                                   np.array(thomas_columns(example_mat)[2]), example_sol))
     # This gave me: array([-0.49084249,  1.91208791,  1.38461538, -3.15384615])
 
-    banded_example = generate_banded(example_mat, (1,1))
+    banded_example = generate_banded(example_mat, (1,1)) # just a utility that formats the matrix for scipy
 
     # This also gives the solutions array([-0.49084249,  1.91208791,  1.38461538, -3.15384615])
-    linalg.solve_banded((1,1), banded_example, example_sol)
+    print(linalg.solve_banded((1,1), banded_example, example_sol))
 
-
+    # helper that tests whether tridiagonal_solve_thomas and generate_banded find same value within
+    # floating point tolerance
     testing_thomas_accuracy()
-    
 
+    
+    # helper that checks runtime
     t_times, s_times, nums = timing_thomas_solvers()
     nums = np.array(nums, dtype = np.float64)
     
@@ -487,58 +618,57 @@ if __name__ == "__main__":
     plt.show()
 
 
+    # Question 3 the implicit approximation =====================
     
-
+    # our test values
     test_r = 0.05
     test_sigma = 0.1
     test_T = 1.8
     test_K = 673
-    test_M = 1000
-    test_N = 100
-    test_xmin = np.log(test_K/4)
-    test_xmax = np.log(test_K*4)
-
-    test_exact, test_num, test_domain = testing_implicit_accuracy (test_r, test_sigma,
-                                                                   test_T, test_K, test_M, test_N, test_xmin, test_xmax)
-
-
+    test_M = 4
+    test_N = 3
     
-    test_num = black_scholes_implicit (test_r, test_sigma,
-                            test_T, test_K, test_M, test_N, test_xmin, test_xmax)
+    test_xmin = test_K/4 # this range is a good distance above and below the strike price
+    test_xmax = test_K*4 # K/2 and K*3 are also similar ranges I've seen
 
-    
-    abs_error = np.abs(test_num[:,-1] - test_exact)
+    test_num = black_scholes_implicit (test_r, test_sigma, test_T, test_K, test_M, test_N, test_xmin, test_xmax)
+    test_nic_num = black_scholes_crank_nicolson (test_r, test_sigma, test_T, test_K, test_M, test_N, test_xmin, test_xmax)
+    test_mesh = np.linspace(test_xmin, test_xmax, test_M+1)
+    test_exact = black_scholes_exact(test_mesh, test_r, test_sigma, test_T, test_K)
 
-    max_error = np.max(abs_error)
-    
-    rmse = np.sqrt(np.mean(abs_error**2))
+    plt.title(f"Option Price Estimates for {test_N} timesplits and {test_M} stock splits")
+    plt.xlabel(f"Stock Value split (between S=({test_xmin:.2f}, {test_xmax:.2f}))")
+    plt.ylabel("Option Price")
 
-    test_nic_num = black_scholes_crank_nicolson(test_r, test_sigma,
-                                                test_T, test_K, test_M, test_N, test_xmin, test_xmax)
+    plt.plot(test_exact, ":", label="Exact")
 
-    plt.title("Option Price Estimates")
-    plt.xlabel("Time Period")
-    plt.ylabel("Price")
-    plt.plot(test_domain, test_exact, label="Exact")
-    plt.plot(test_domain, test_num[:,0], "--", label="Implicit First Difference (First Run)")
-    plt.plot(test_domain, test_nic_num[:,0], "-.", label="Crank Nicolson (First Run)")
-    # plt.legend()
-    # plt.show()
+    plt.plot(test_num[:,-1], "--", label="Implicit First Difference (Final Run)")
+    # plt.plot(test_nic_num[:,-1], "-.", label="Crank Nicolson Method (Final Run)")
 
-    # plt.title(f"{test_M}-th estimate for option price")
-    # plt.plot(test_domain, test_exact, label="Exact")
-    plt.plot(test_domain, test_num[:,-1], "--", label=f"Implicit First Difference {test_M}-th Run")
-    plt.plot(test_domain, test_nic_num[:,-1], "-.", label=f"Crank Nicolson {test_M}-th Run")
+    plt.plot(test_num[:,1], "--", label="Implicit First Difference (First Run)")
+    # plt.plot(test_nic_num[:,1], "-.", label="Crank Nicolson Method (First Run)")
+
+    # plt.xlim(11.85,12.04)
+    # plt.ylim(2050, 2080)
+
     plt.legend()
     plt.show()
 
     print(f"The final exact value is £{test_exact[-1]:.2f}, "
           f"the initial implicit estimate is £{test_num[-1,0]:.2f}, "
-          f"and the final implicit estimate is £{test_num[-1,-1]:.2f}")
+          f"and the final implicit estimate is £{test_num[-1,-1]:.2f}.")
 
     print(f"The final exact value is £{test_exact[-1]:.2f}, "
-          f"the initial implicit estimate is £{test_nic_num[-1,0]:.2f}, "
-          f"and the final implicit estimate is £{test_nic_num[-1,-1]:.2f}")
+          f"the initial Crank Nicolson estimate is £{test_nic_num[-1,0]:.2f}, "
+          f"and the final Crank Nicolson estimate is £{test_nic_num[-1,-1]:.2f}.")
+
+
+    # manual errors
+    abs_error = np.abs(test_num[:,-1] - test_exact)
+
+    max_error = np.max(abs_error)
+    
+    rmse = np.sqrt(np.mean(abs_error**2))
 
     
     abs_error_nic = np.abs(test_nic_num[:,-1] - test_exact)
@@ -552,7 +682,7 @@ if __name__ == "__main__":
 
 
     M_cases, N_cases, rmse_implicit, rmse_crank = testing_rmse()
-    rmse_crank
+
 
 
     im = plt.imshow(
