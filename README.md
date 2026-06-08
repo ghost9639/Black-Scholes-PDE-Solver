@@ -1,21 +1,21 @@
 
 # Table of Contents
 
-1.  [Partial Differential Equation Solver](#orgd6dc6b0)
-2.  [Features](#org0ee63f6)
-    1.  [Thomas Algorithm](#org1224428)
-    2.  [Implicit Scheme Solution](#orge698a08)
-    3.  [Crank Nicolson Scheme](#orgb2d7c11)
-    4.  [Benchmarking and Comparisons](#orgfcbebdf)
-3.  [Optimisations](#org000eab9)
-    1.  [Algorithms](#orgd32aaa6)
-4.  [Project Insights](#orge90ce58)
-5.  [Potential Improvements](#org69d354c)
-6.  [References](#org6d4d1ec)
+1.  [Partial Differential Equation Solver](#orgf85aa75)
+2.  [Features](#org6529a72)
+    1.  [Thomas Algorithm](#orgb7aae53)
+    2.  [Implicit Scheme Solution](#org0ada79a)
+    3.  [Crank Nicolson Scheme](#org2f6b3f7)
+    4.  [Benchmarking and Comparisons](#orga702598)
+3.  [Optimisations](#org67bee63)
+    1.  [Algorithms](#org7986c5e)
+4.  [Project Insights](#orga438ba1)
+5.  [Potential Improvements](#org80221ff)
+6.  [References](#org0523dbd)
 
 
 
-<a id="orgd6dc6b0"></a>
+<a id="orgf85aa75"></a>
 
 # Partial Differential Equation Solver
 
@@ -33,7 +33,7 @@ $$
 V(s,T) = \max(0, S_T - K) 
 $$
 
-Where $C$ is the value of the option, $t$ is the time variable, $\sigma$ is the volatility, $S$ is the price of the underlying asset, $r$ is the interest rate, and $K$ is the strike price. Typically, we have a left boundary equal to 0, and a right boundary equal to the stock price minus the strike. Equation and approximations from (, <a href="#citeproc_bib_item_1">Hull, 2022, 21</a>). A [full report](Report.pdf) is available for insights and documentation.
+Where $C$ is the value of the option, $t$ is the time variable, $\sigma$ is the volatility, $S$ is the price of the underlying asset, $r$ is the interest rate, and $K$ is the strike price. Typically, we have a left boundary equal to 0, and a right boundary equal to the stock price minus the strike. Equation and approximations from (<a href="#citeproc_bib_item_1">Hull, 2022</a>). A [full report](Report.pdf) is available for insights and documentation.
 
 This project includes:
 
@@ -45,19 +45,19 @@ This project includes:
 -   Highly optimised code making best use of numpy and numba.
 
 
-<a id="org0ee63f6"></a>
+<a id="org6529a72"></a>
 
 # Features
 
 
-<a id="org1224428"></a>
+<a id="orgb7aae53"></a>
 
 ## Thomas Algorithm
 
 Structurally, the differencing schemes used in this project provide tridiagonal systems of equations for each discretised time step. In order to efficiently solve this, I implement the Thomas Algorithm. This has $\mathcal{O} (N)$ time complexity and only requires 4 vectors of length $N$ in memory to solve. This is benchmarked against the scipy banded equation solver, and demonstrates higher memory efficiency across a range of test cases.
 
 
-<a id="orge698a08"></a>
+<a id="org0ada79a"></a>
 
 ## Implicit Scheme Solution
 
@@ -68,7 +68,7 @@ The implicit scheme uses a backwards loop to approximate PDEs. It is:
 -   Highly performant, and fully implemented using numpy calculations and numba pre-compiled loops.
 
 
-<a id="orgb2d7c11"></a>
+<a id="org2f6b3f7"></a>
 
 ## Crank Nicolson Scheme
 
@@ -79,19 +79,19 @@ The Crank-Nicolson Scheme uses a central differenced approximation to achieve be
 -   Has theoretically lower root mean squared error (RMSE) than both methods.
 
 
-<a id="orgfcbebdf"></a>
+<a id="orga702598"></a>
 
 ## Benchmarking and Comparisons
 
 Benchmarking was conducted on all three functions, with all three demonstrating extremely high runtime efficiency over a range of test cases. I was able to reproduce the time discretisation efficiency / stability gain from the Crank-Nicolson over the implicit scheme.
 
 
-<a id="org000eab9"></a>
+<a id="org67bee63"></a>
 
 # Optimisations
 
 
-<a id="orgd32aaa6"></a>
+<a id="org7986c5e"></a>
 
 ## Algorithms
 
@@ -102,7 +102,7 @@ A variety of algorithmic choices were made to increase speed.
 -   Robustness tests with unit testing and function guards allow for inputs to be safe and errors to be checked within Python rather than numba.
 
 
-<a id="orge90ce58"></a>
+<a id="orga438ba1"></a>
 
 # Project Insights
 
@@ -111,7 +111,7 @@ A variety of algorithmic choices were made to increase speed.
 -   numpy supports fast vector mathematics, numba enables faster dynamic programming loops.
 
 
-<a id="org69d354c"></a>
+<a id="org80221ff"></a>
 
 # Potential Improvements
 
@@ -120,7 +120,7 @@ A variety of algorithmic choices were made to increase speed.
 -   other exotic options?
 
 
-<a id="org6d4d1ec"></a>
+<a id="org0523dbd"></a>
 
 # References
 
