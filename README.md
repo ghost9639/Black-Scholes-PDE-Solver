@@ -1,28 +1,28 @@
 
 # Table of Contents
 
-1.  [Partial Differential Equation Solver](#org9a057b4)
-2.  [Features](#orgb47045e)
-    1.  [Thomas Algorithm](#org6b20449)
-    2.  [Implicit Scheme Solution](#org4f6dcce)
-    3.  [Crank Nicolson Scheme](#org84e29b4)
-    4.  [Benchmarking and Comparisons](#org751b256)
-3.  [Optimisations](#orgedb5710)
-    1.  [Algorithms](#org4d1df8b)
-4.  [Project Insights](#orgfaea022)
-5.  [Potential Improvements](#orga9b5a23)
-6.  [References](#orgdafae39)
+1.  [Partial Differential Equation Solver](#org609e60f)
+2.  [Features](#org1524ae1)
+    1.  [Thomas Algorithm](#org1ddca42)
+    2.  [Implicit Scheme Solution](#org29993ad)
+    3.  [Crank Nicolson Scheme](#orged0e59b)
+    4.  [Benchmarking and Comparisons](#orgba28863)
+3.  [Optimisations](#org198c79a)
+    1.  [Algorithms](#org2245728)
+4.  [Project Insights](#org852ba2e)
+5.  [Potential Improvements](#org8b21b05)
+6.  [References](#orgaf26018)
 
 
 
-<a id="org9a057b4"></a>
+<a id="org609e60f"></a>
 
 # Partial Differential Equation Solver
 
 This project implements three schemes for solving Partial Differential Equations (PDEs), directed at the Black-Scholes PDE:
 
 $$
-\frac{\partial C}{\partial t} + \frac{1}{2} \sigma^2 S^2 \frac{\partial^2 C}{\partial S^2} + r S \frac{\partial C}{\partial S} - rC = 0,
+\frac{\partial V}{\partial t} + \frac{1}{2} \sigma^2 S^2 \frac{\partial^2 V}{\partial S^2} + r S \frac{\partial V}{\partial S} - rV = 0,
 $$
 
 with boundary conditions:
@@ -39,7 +39,7 @@ $$
 V(s,T) = \max(0, S_T - K) 
 $$
 
-Where $C$ is the value of the option, $t$ is the time variable, $\sigma$ is the volatility, $S$ is the price of the underlying asset, $r$ is the interest rate, and $K$ is the strike price. Typically, we have a left boundary equal to 0, and a right boundary equal to the stock price minus the strike. Equation and approximations are from Chapter 21 of (<a href="#citeproc_bib_item_1">Hull, 2022</a>). A [full report](Report.pdf) is available for insights and documentation. All code is available in the [project file](Main.py).
+Where $V$ is the value of the option, $t$ is the time variable, $\sigma$ is the volatility, $S$ is the price of the underlying asset, $r$ is the interest rate, and $K$ is the strike price. Typically, we have a left boundary equal to 0, and a right boundary equal to the stock price minus the strike. Equation and approximations are from Chapter 21 of (<a href="#citeproc_bib_item_1">Hull, 2022</a>). A [full report](Report.pdf) is available for insights and documentation. All code is available in the [project file](Main.py).
 
 This project includes:
 
@@ -51,19 +51,19 @@ This project includes:
 -   Highly optimised code making best use of numpy and numba.
 
 
-<a id="orgb47045e"></a>
+<a id="org1524ae1"></a>
 
 # Features
 
 
-<a id="org6b20449"></a>
+<a id="org1ddca42"></a>
 
 ## Thomas Algorithm
 
 Structurally, the differencing schemes used in this project provide tridiagonal systems of equations for each discretised time step. In order to efficiently solve this, I implement the Thomas Algorithm. This has $\mathcal{O} (N)$ time complexity and only requires 4 vectors of length $N$ in memory to solve. This is benchmarked against the scipy banded equation solver, and demonstrates higher memory efficiency across a range of test cases.
 
 
-<a id="org4f6dcce"></a>
+<a id="org29993ad"></a>
 
 ## Implicit Scheme Solution
 
@@ -74,7 +74,7 @@ The implicit scheme uses a backwards loop to approximate PDEs. It is:
 -   Highly performant, and fully implemented using numpy calculations and numba pre-compiled loops.
 
 
-<a id="org84e29b4"></a>
+<a id="orged0e59b"></a>
 
 ## Crank Nicolson Scheme
 
@@ -85,19 +85,19 @@ The Crank-Nicolson Scheme uses a central differenced approximation to achieve be
 -   Has theoretically lower root mean squared error (RMSE) than both methods.
 
 
-<a id="org751b256"></a>
+<a id="orgba28863"></a>
 
 ## Benchmarking and Comparisons
 
 Benchmarking was conducted on all three functions, with all three demonstrating extremely high runtime efficiency over a range of test cases. I was able to reproduce the time discretisation efficiency / stability gain from the Crank-Nicolson over the implicit scheme.
 
 
-<a id="orgedb5710"></a>
+<a id="org198c79a"></a>
 
 # Optimisations
 
 
-<a id="org4d1df8b"></a>
+<a id="org2245728"></a>
 
 ## Algorithms
 
@@ -108,7 +108,7 @@ A variety of algorithmic choices were made to increase speed.
 -   Robustness tests with unit testing and function guards allow for inputs to be safe and errors to be checked within Python rather than numba.
 
 
-<a id="orgfaea022"></a>
+<a id="org852ba2e"></a>
 
 # Project Insights
 
@@ -117,7 +117,7 @@ A variety of algorithmic choices were made to increase speed.
 -   numpy supports fast vector mathematics, numba enables faster dynamic programming loops.
 
 
-<a id="orga9b5a23"></a>
+<a id="org8b21b05"></a>
 
 # Potential Improvements
 
@@ -126,7 +126,7 @@ A variety of algorithmic choices were made to increase speed.
 -   other exotic options?
 
 
-<a id="orgdafae39"></a>
+<a id="orgaf26018"></a>
 
 # References
 
