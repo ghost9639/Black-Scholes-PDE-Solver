@@ -1,21 +1,21 @@
 
 # Table of Contents
 
-1.  [Partial Differential Equation Solver](#org22b7ff4)
-2.  [Features](#org120f995)
-    1.  [Thomas Algorithm](#org3ca160e)
-    2.  [Implicit Scheme Solution](#orgc738888)
-    3.  [Crank Nicolson Scheme](#orge7d250c)
-    4.  [Benchmarking and Comparisons](#orgb177af8)
-3.  [Optimisations](#orgb7c9301)
-    1.  [Algorithms](#orge7325e6)
-4.  [Project Insights](#org6dd3513)
-5.  [Potential Improvements](#orgfc0ee36)
-6.  [References](#orgb28a0fb)
+1.  [Partial Differential Equation Solver](#org9a057b4)
+2.  [Features](#orgb47045e)
+    1.  [Thomas Algorithm](#org6b20449)
+    2.  [Implicit Scheme Solution](#org4f6dcce)
+    3.  [Crank Nicolson Scheme](#org84e29b4)
+    4.  [Benchmarking and Comparisons](#org751b256)
+3.  [Optimisations](#orgedb5710)
+    1.  [Algorithms](#org4d1df8b)
+4.  [Project Insights](#orgfaea022)
+5.  [Potential Improvements](#orga9b5a23)
+6.  [References](#orgdafae39)
 
 
 
-<a id="org22b7ff4"></a>
+<a id="org9a057b4"></a>
 
 # Partial Differential Equation Solver
 
@@ -28,8 +28,14 @@ $$
 with boundary conditions:
 
 $$
-\underset{s \rightarrow 0}{\lim} V(s,t) = r_t (t), \forall t \in [0,T] 
-\underset{s \rightarrow \infty}{\lim} \frac{V(s,t)}{r_2 (s,t)} = 1, \forall t \in [0,T] 
+\underset{s \rightarrow 0}{\lim} V(s,t) = r_t (t), \forall t \in [0,T]
+$$
+
+$$
+\underset{s \rightarrow \infty}{\lim} \frac{V(s,t)}{r_2 (s,t)} = 1, \forall t \in [0,T]
+$$
+
+$$
 V(s,T) = \max(0, S_T - K) 
 $$
 
@@ -45,19 +51,19 @@ This project includes:
 -   Highly optimised code making best use of numpy and numba.
 
 
-<a id="org120f995"></a>
+<a id="orgb47045e"></a>
 
 # Features
 
 
-<a id="org3ca160e"></a>
+<a id="org6b20449"></a>
 
 ## Thomas Algorithm
 
 Structurally, the differencing schemes used in this project provide tridiagonal systems of equations for each discretised time step. In order to efficiently solve this, I implement the Thomas Algorithm. This has $\mathcal{O} (N)$ time complexity and only requires 4 vectors of length $N$ in memory to solve. This is benchmarked against the scipy banded equation solver, and demonstrates higher memory efficiency across a range of test cases.
 
 
-<a id="orgc738888"></a>
+<a id="org4f6dcce"></a>
 
 ## Implicit Scheme Solution
 
@@ -68,7 +74,7 @@ The implicit scheme uses a backwards loop to approximate PDEs. It is:
 -   Highly performant, and fully implemented using numpy calculations and numba pre-compiled loops.
 
 
-<a id="orge7d250c"></a>
+<a id="org84e29b4"></a>
 
 ## Crank Nicolson Scheme
 
@@ -79,19 +85,19 @@ The Crank-Nicolson Scheme uses a central differenced approximation to achieve be
 -   Has theoretically lower root mean squared error (RMSE) than both methods.
 
 
-<a id="orgb177af8"></a>
+<a id="org751b256"></a>
 
 ## Benchmarking and Comparisons
 
 Benchmarking was conducted on all three functions, with all three demonstrating extremely high runtime efficiency over a range of test cases. I was able to reproduce the time discretisation efficiency / stability gain from the Crank-Nicolson over the implicit scheme.
 
 
-<a id="orgb7c9301"></a>
+<a id="orgedb5710"></a>
 
 # Optimisations
 
 
-<a id="orge7325e6"></a>
+<a id="org4d1df8b"></a>
 
 ## Algorithms
 
@@ -102,7 +108,7 @@ A variety of algorithmic choices were made to increase speed.
 -   Robustness tests with unit testing and function guards allow for inputs to be safe and errors to be checked within Python rather than numba.
 
 
-<a id="org6dd3513"></a>
+<a id="orgfaea022"></a>
 
 # Project Insights
 
@@ -111,7 +117,7 @@ A variety of algorithmic choices were made to increase speed.
 -   numpy supports fast vector mathematics, numba enables faster dynamic programming loops.
 
 
-<a id="orgfc0ee36"></a>
+<a id="orga9b5a23"></a>
 
 # Potential Improvements
 
@@ -120,7 +126,7 @@ A variety of algorithmic choices were made to increase speed.
 -   other exotic options?
 
 
-<a id="orgb28a0fb"></a>
+<a id="orgdafae39"></a>
 
 # References
 
