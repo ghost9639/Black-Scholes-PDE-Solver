@@ -253,7 +253,12 @@ def timing_thomas_solvers ():
 
     return thomas_times, scipy_times, N
 
-# Question 3 =============================================
+
+
+# =============================================
+# Black Scholes Implicit Solver
+# =============================================
+
 ################ The Actual Function #####################
 @njit(fastmath=True)
 def black_scholes_implicit_engine (r, sigma, T, K, M, N, xmin, xmax):
@@ -415,9 +420,10 @@ def testing_implicit_accuracy (r, sigma, T, K, M, N, xmin, xmax):
 
     # We can now return the exact solution and the central differenced approximation
     return exact_solution, w, S_domain
+#  =============================================
+# Crank-Nicolson Solver for Black Scholes
+#  =============================================
 
-# Question 4 =============================================
-################ The Actual Function #####################
 
 @njit(fastmath=True)
 def _stancil_algorithm (lower, central, upper, w):
@@ -435,6 +441,7 @@ def _stancil_algorithm (lower, central, upper, w):
         y[i] = val
     return y
 
+################ The Actual Function #####################
 
 @njit(fastmath=True)
 def black_scholes_crank_nicolson_engine (r, sigma, T, K, M, N, xmin, xmax):
@@ -503,6 +510,18 @@ def black_scholes_crank_nicolson_engine (r, sigma, T, K, M, N, xmin, xmax):
     return w
 
 def black_scholes_crank_nicolson (r, sigma, T, K, M, N, xmin, xmax):
+    """Wrapper for Crank-Nicolson scheme that enables testing of function inputs while
+    preserving numba acceleration.
+
+    @param r the interest rate (as a decimal)
+    @param sigma the volatility of the stock
+    @param T the time till maturity (in years)
+    @param K the strike price
+    @param M the number of splits in the stock
+    @param N the number of splits in time
+    @param xmin the lower domain of the stock
+    @param xmax the upper domain of the stock
+    @output w the approximations of the stock price"""
 
     try:
         assert input_data (r, sigma, T, K, M, N, xmin, xmax)
@@ -516,6 +535,7 @@ def black_scholes_crank_nicolson (r, sigma, T, K, M, N, xmin, xmax):
 
 
 def _rmse(approx, exact):
+    """explicit rmse calc"""
     return np.sqrt(np.mean((approx - exact) ** 2))
 
 
