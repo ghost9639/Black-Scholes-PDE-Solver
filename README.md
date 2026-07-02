@@ -1,21 +1,21 @@
 
 # Table of Contents
 
-1.  [Partial Differential Equation Solver](#org609e60f)
-2.  [Features](#org1524ae1)
-    1.  [Thomas Algorithm](#org1ddca42)
-    2.  [Implicit Scheme Solution](#org29993ad)
-    3.  [Crank Nicolson Scheme](#orged0e59b)
-    4.  [Benchmarking and Comparisons](#orgba28863)
-3.  [Optimisations](#org198c79a)
-    1.  [Algorithms](#org2245728)
-4.  [Project Insights](#org852ba2e)
-5.  [Potential Improvements](#org8b21b05)
-6.  [References](#orgaf26018)
+1.  [Partial Differential Equation Solver](#org62e5b51)
+2.  [Features](#org791b0d9)
+    1.  [Thomas Algorithm](#orgd0cbe60)
+    2.  [Implicit Scheme Solution](#orgfc61099)
+    3.  [Crank Nicolson Scheme](#org6b057c1)
+    4.  [Benchmarking and Comparisons](#orgcd8ef55)
+3.  [Optimisations](#org02b30a7)
+    1.  [Algorithms](#orgeb5da0a)
+4.  [Project Insights](#org9f35a6a)
+5.  [Potential Improvements](#org7dbe565)
+6.  [References](#orge0875d2)
 
 
 
-<a id="org609e60f"></a>
+<a id="org62e5b51"></a>
 
 # Partial Differential Equation Solver
 
@@ -50,20 +50,22 @@ This project includes:
 -   Detailed error analysis for the differencing schemes,
 -   Highly optimised code making best use of numpy and numba.
 
+![img](images/Figure_1.png "Comparison of Root Mean Squared Error between Crank-Nicolson and Implicit Schemes")
 
-<a id="org1524ae1"></a>
+
+<a id="org791b0d9"></a>
 
 # Features
 
 
-<a id="org1ddca42"></a>
+<a id="orgd0cbe60"></a>
 
 ## Thomas Algorithm
 
 Structurally, the differencing schemes used in this project provide tridiagonal systems of equations for each discretised time step. In order to efficiently solve this, I implement the Thomas Algorithm. This has $\mathcal{O} (N)$ time complexity and only requires 4 vectors of length $N$ in memory to solve. This is benchmarked against the scipy banded equation solver, and demonstrates higher memory efficiency across a range of test cases.
 
 
-<a id="org29993ad"></a>
+<a id="orgfc61099"></a>
 
 ## Implicit Scheme Solution
 
@@ -74,7 +76,7 @@ The implicit scheme uses a backwards loop to approximate PDEs. It is:
 -   Highly performant, and fully implemented using numpy calculations and numba pre-compiled loops.
 
 
-<a id="orged0e59b"></a>
+<a id="org6b057c1"></a>
 
 ## Crank Nicolson Scheme
 
@@ -85,19 +87,19 @@ The Crank-Nicolson Scheme uses a central differenced approximation to achieve be
 -   Has theoretically lower root mean squared error (RMSE) than both methods.
 
 
-<a id="orgba28863"></a>
+<a id="orgcd8ef55"></a>
 
 ## Benchmarking and Comparisons
 
 Benchmarking was conducted on all three functions, with all three demonstrating extremely high runtime efficiency over a range of test cases. I was able to reproduce the time discretisation efficiency / stability gain from the Crank-Nicolson over the implicit scheme.
 
 
-<a id="org198c79a"></a>
+<a id="org02b30a7"></a>
 
 # Optimisations
 
 
-<a id="org2245728"></a>
+<a id="orgeb5da0a"></a>
 
 ## Algorithms
 
@@ -108,7 +110,7 @@ A variety of algorithmic choices were made to increase speed.
 -   Robustness tests with unit testing and function guards allow for inputs to be safe and errors to be checked within Python rather than numba.
 
 
-<a id="org852ba2e"></a>
+<a id="org9f35a6a"></a>
 
 # Project Insights
 
@@ -117,7 +119,7 @@ A variety of algorithmic choices were made to increase speed.
 -   numpy supports fast vector mathematics, numba enables faster dynamic programming loops.
 
 
-<a id="org8b21b05"></a>
+<a id="org7dbe565"></a>
 
 # Potential Improvements
 
@@ -126,7 +128,7 @@ A variety of algorithmic choices were made to increase speed.
 -   other exotic options?
 
 
-<a id="orgaf26018"></a>
+<a id="orge0875d2"></a>
 
 # References
 

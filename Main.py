@@ -13,7 +13,6 @@ from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
 
-# @njit
 def input_data (r, sigma, T, K, M, N, xmin, xmax):
     """Input validation function, returns false when input fails."""
 
@@ -663,10 +662,10 @@ if __name__ == "__main__":
     plt.plot(test_exact, ":", label="Exact")
 
     plt.plot(test_num[:,-1], "--", label="Implicit First Difference (Final Run)")
-    # plt.plot(test_nic_num[:,-1], "-.", label="Crank Nicolson Method (Final Run)")
+    plt.plot(test_nic_num[:,-1], "-.", label="Crank Nicolson Method (Final Run)")
 
     plt.plot(test_num[:,1], "--", label="Implicit First Difference (First Run)")
-    # plt.plot(test_nic_num[:,1], "-.", label="Crank Nicolson Method (First Run)")
+    plt.plot(test_nic_num[:,1], "-.", label="Crank Nicolson Method (First Run)")
 
     # plt.xlim(11.85,12.04)
     # plt.ylim(2050, 2080)
@@ -751,4 +750,26 @@ if __name__ == "__main__":
 
     rmse_implicit
     rmse_crank
+    rmse_diff = rmse_implicit-rmse_crank
+
     
+    im = plt.imshow(
+        rmse_diff,
+        origin="lower",
+        aspect="auto",
+        extent=[
+            N_cases[0],
+            N_cases[-1],
+            M_cases[0],
+            M_cases[-1]
+        ]
+    )
+
+    plt.colorbar(im, label="RMSE")
+
+    plt.xlabel("N (time discretisation)")
+    plt.ylabel("M (space discretisation)")
+
+    plt.title("Difference in RMSE between implicit and Crank-Nicolson methods")
+
+    plt.show()
