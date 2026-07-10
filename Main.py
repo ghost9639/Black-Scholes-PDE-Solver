@@ -624,6 +624,10 @@ if __name__ == "__main__":
     c_quad = t_times[0] / nums[0]**2
     quad_ref = c_quad * nums**2
 
+    t_times
+    s_times
+    np.mean((((np.array(t_times) - np.array(s_times)) / np.array(s_times)) * 100)[1:])
+    
     plt.loglog(nums, linear_ref, linestyle = '--', label = r"$O(n)$ reference")
     plt.loglog(nums, quad_ref, linestyle = ':', label = r"$O(n^2)$ reference")
 
@@ -752,6 +756,7 @@ if __name__ == "__main__":
     rmse_crank
     rmse_diff = rmse_implicit-rmse_crank
 
+    rmse_diff = ((((rmse_crank - rmse_implicit) / rmse_implicit)) *100)
     
     im = plt.imshow(
         rmse_diff,
@@ -770,6 +775,6 @@ if __name__ == "__main__":
     plt.xlabel("N (time discretisation)")
     plt.ylabel("M (space discretisation)")
 
-    plt.title("Difference in RMSE between implicit and Crank-Nicolson methods")
+    plt.title("% Difference in RMSE between implicit and Crank-Nicolson methods")
 
     plt.show()
